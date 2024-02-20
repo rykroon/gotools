@@ -8,45 +8,54 @@ import (
 	"net/http"
 )
 
-type RequestDecorator func(req *http.Request)
+/*
+ * Notes: I like this approach much better than the decoraotors.
+ * I like the that the request has setter methods and the response has
+ * getter methods.
+ */
 
-func BasicAuth(username, password string) RequestDecorator {
-	return func(req *http.Request) {
-		req.SetBasicAuth(username, password)
+type Request struct {
+	*http.Request
+}
+
+func NewRequest(method, urlString string) (*Request, error) {
+	req, err := http.NewRequest(method, urlString, nil)
+	if err != nil {
+		return nil, fmt.Errorf("NewRequest: %w", err)
 	}
+	return &Request{req}, nil
 }
 
-func Header(key, value string) RequestDecorator {
-	return func(req *http.Request) {
-		req.Header.Set(key, value)
-	}
+func (r *Request) SetHeader(key, value string) {
+	r.Header.Set(key, value)
 }
 
-func BearerAuth(token string) RequestDecorator {
-	return Header("Authorization", fmt.Sprintf("Bearer %s", token))
+func (r *Request) SetAuth(scheme, credentials string) {
+	r.Header.Set("Authorization", fmt.Sprint(scheme, " ", credentials))
 }
 
-func ContentType(contentType string) RequestDecorator {
-	return Header("Content-Type", contentType)
+func (r *Request) SetBearerToken(token string) {
+	r.SetAuth("Bearer", token)
 }
 
-func JoinPath(paths ...string) RequestDecorator {
-	return func(req *http.Request) {
-		req.URL = req.URL.JoinPath(paths...)
-	}
+func (r *Request) SetContentType(contentType string) {
+	r.Header.Set("Content-Type", contentType)
 }
 
-func Body(contentType string, body []byte) RequestDecorator {
-	return func(req *http.Request) {
-		req.Body = io.NopCloser(bytes.NewReader(body))
-		ContentType(contentType)(req)
-	}
+func (r *Request) SetPath(path string) {
+	r.URL = r.URL.JoinPath(path)
 }
 
-func Json(value any) (RequestDecorator, error) {
+func (r *Request) SetBody(content []byte) {
+	r.Body = io.NopCloser(bytes.NewReader(content))
+}
+
+func (r *Request) SetJson(value any) error {
 	jsonBody, err := json.Marshal(value)
 	if err != nil {
-		return nil, fmt.Errorf("Json: %w", err)
+		return fmt.Errorf("SetJson: %w", err)
 	}
-	return Body("application/json", jsonBody), nil
+	r.SetBody(jsonBody)
+	r.SetContentType("application/json")
+	return nil
 }
