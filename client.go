@@ -9,29 +9,30 @@ import (
 
 type Client struct {
 	client     *http.Client
-	baseUrl    string
+	baseUrl    *neturl.URL
 	decorators []RequestDecorator
 }
 
-func NewClient(timeout time.Duration, baseUrl string, decorators ...RequestDecorator) *Client {
+func NewClient(timeout time.Duration, baseUrlString string, decorators ...RequestDecorator) (*Client, error) {
+	// TODO: Handle when the base URL is not provided
+	url, err := neturl.ParseRequestURI(baseUrlString)
+	if err != nil {
+		return nil, fmt.Errorf("NewClient: %w", err)
+	}
+
 	return &Client{
 		client:     &http.Client{Timeout: timeout},
-		baseUrl:    baseUrl,
+		baseUrl:    url,
 		decorators: decorators,
-	}
+	}, nil
 }
 
-func (c *Client) Request(method, url string, decorators ...RequestDecorator) (*Response, error) {
-	if c.baseUrl != "" {
-		// If the URL is relative, prepend the base URL
-		newUrl, err := neturl.JoinPath(c.baseUrl, url)
-		if err != nil {
-			return nil, fmt.Errorf("Request: %w", err)
-		}
-		url = newUrl
-	}
+func (c *Client) Request(method, urlString string, decorators ...RequestDecorator) (*Response, error) {
+	// TODO: Handle when the client url is not provided
 
-	req, err := http.NewRequest(method, url, nil)
+	url := c.baseUrl.JoinPath(urlString)
+
+	req, err := http.NewRequest(method, url.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("Request: %w", err)
 	}
@@ -46,45 +47,10 @@ func (c *Client) Request(method, url string, decorators ...RequestDecorator) (*R
 	return &Response{resp}, err
 }
 
-func (c *Client) Get(url string) (*Response, error) {
-	return c.Request("GET", url)
+func (c *Client) Get(url string, decorators ...RequestDecorator) (*Response, error) {
+	return c.Request("GET", url, decorators...)
 }
 
-func (c *Client) Post(url string, payload any) (*Response, error) {
-	return nil, nil
+func (c *Client) Post(url string, decorators ...RequestDecorator) (*Response, error) {
+	return c.Request("POST", url, decorators...)
 }
-
-// Creates a JSON HTTP request with the given method, url, and payload
-// func NewJsonRequest(method, url string, payload any) (*http.Request, error) {
-// 	jsonBody, err := json.Marshal(payload)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("NewJsonRequest: %w", err)
-// 	}
-// 	req, err := NewRequest(method, url, jsonBody)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("NewJsonRequest: %w", err)
-// 	}
-// 	req.Header.Set("Content-Type", "application/json")
-// 	return req, nil
-// }
-
-// // Creates an HTTP request with the given method, url, and body
-// func NewRequest(method, url string, body []byte) (*http.Request, error) {
-// 	var bodyReader io.Reader = nil
-// 	if body != nil {
-// 		bodyReader = bytes.NewReader(body)
-// 	}
-// 	req, err := http.NewRequest(method, url, bodyReader)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("NewRequest: %w", err)
-// 	}
-// 	return req, nil
-// }
-
-// func UnmarshalResponse(resp *http.Response, target any) error {
-// 	defer resp.Body.Close()
-// 	if err := json.NewDecoder(resp.Body).Decode(target); err != nil {
-// 		return fmt.Errorf("UnmarshalResponse: %w", err)
-// 	}
-// 	return nil
-// }

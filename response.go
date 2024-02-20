@@ -1,6 +1,7 @@
 package httpx
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 
 type Response struct {
 	*http.Response
+	cachedBody []byte
 }
 
 func (r *Response) IsSuccess() bool {
@@ -34,19 +36,37 @@ func (r *Response) GetContentType() string {
 	return r.Header.Get("Content-Type")
 }
 
-func (r *Response) GetContent() ([]byte, error) {
-	defer r.Body.Close()
-	// I believe the body will need to be cached in order to be read again
-	return io.ReadAll(r.Body)
-}
-
-func (r *Response) GetJson() error {
-	if !r.IsJson() {
-		return fmt.Errorf("Response is not JSON")
+func (r *Response) GetBody() ([]byte, error) {
+	if r.cachedBody != nil {
+		return r.cachedBody, nil
 	}
-	return nil
+	defer r.Body.Close()
+	content, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read: %w", err)
+	}
+	r.cachedBody = content
+	return content, nil
 }
 
 func (r *Response) IsJson() bool {
 	return r.GetContentType() == "application/json"
+}
+
+func (r *Response) GetJson() (map[string]any, error) {
+	var target map[string]any
+	err := r.UnmarshalJson(target)
+	return target, err
+}
+
+func (r *Response) UnmarshalJson(target any) error {
+	if !r.IsJson() {
+		return fmt.Errorf("UnmarshalJson: response is not JSON")
+	}
+	content, err := r.GetBody()
+	if err != nil {
+		return fmt.Errorf("UnmarshalJson: %w", err)
+	}
+	return json.Unmarshal(content, target)
+
 }
