@@ -75,3 +75,11 @@ func (r *Request) SetJson(value any) error {
 	r.SetContentType("application/json")
 	return nil
 }
+
+func (r *Request) Send() (*Response, error) {
+	resp, err := http.DefaultClient.Do(r.Request)
+	if err != nil {
+		return nil, fmt.Errorf("Send: %w", err)
+	}
+	return &Response{Response: resp}, nil
+}

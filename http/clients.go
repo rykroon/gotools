@@ -24,3 +24,11 @@ func NewClient(timeout time.Duration, baseUrlString string) (*Client, error) {
 		baseUrl: url,
 	}, nil
 }
+
+func (c *Client) Send(req *Request) (*Response, error) {
+	resp, err := c.client.Do(req.Request)
+	if err != nil {
+		return nil, fmt.Errorf("Send: %w", err)
+	}
+	return &Response{Response: resp}, nil
+}
