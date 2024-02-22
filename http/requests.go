@@ -19,9 +19,7 @@ func NewRequest(method, url string, body []byte) (*Request, error) {
 		return nil, fmt.Errorf("NewRequest: %w", err)
 	}
 	request := &Request{req}
-	if body != nil {
-		request.SetBody(body)
-	}
+	request.SetBody(body)
 	return request, nil
 }
 
@@ -45,27 +43,28 @@ func (r *Request) AppendPath(path string) {
 	r.URL = r.URL.JoinPath(path)
 }
 
-func (r *Request) AddQueryParam(key, value string) {
-	query := r.URL.Query()
-	query.Add(key, value)
-	r.URL.RawQuery = query.Encode()
-}
-
-func (r *Request) SetQueryParam(key, value string) {
-	query := r.URL.Query()
-	query.Set(key, value)
-	r.URL.RawQuery = query.Encode()
+func (r *Request) SetQueryParams(params url.Values) {
+	r.URL.RawQuery = params.Encode()
 }
 
 func (r *Request) SetBody(content []byte) {
-	r.Body = io.NopCloser(bytes.NewReader(content))
+	if content == nil {
+		r.Body = nil
+		r.ContentLength = 0
+	} else {
+		r.Body = io.NopCloser(bytes.NewReader(content))
+		r.ContentLength = int64(len(content))
+		// r.GetBody = func() (io.ReadCloser, error)
+	}
 }
 
+// SetForm sets the request body as form data
 func (r *Request) SetForm(form url.Values) {
 	r.SetBody([]byte(form.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 }
 
+// SetJson sets the request body as JSON
 func (r *Request) SetJson(value any) error {
 	jsonBody, err := json.Marshal(value)
 	if err != nil {

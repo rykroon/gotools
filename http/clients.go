@@ -4,31 +4,53 @@ import (
 	"fmt"
 	"net/http"
 	neturl "net/url"
-	"time"
 )
 
 type Client struct {
-	client  *http.Client
-	baseUrl *neturl.URL
+	*http.Client
 }
 
-func NewClient(timeout time.Duration, baseUrlString string) (*Client, error) {
-	// TODO: Handle when the base URL is not provided
-	url, err := neturl.ParseRequestURI(baseUrlString)
+// Do sends an HTTP request and returns an HTTP response
+func (c *Client) Do(req *Request) (*Response, error) {
+	resp, err := c.Client.Do(req.Request)
 	if err != nil {
-		return nil, fmt.Errorf("NewClient: %w", err)
-	}
-
-	return &Client{
-		client:  &http.Client{Timeout: timeout},
-		baseUrl: url,
-	}, nil
-}
-
-func (c *Client) Send(req *Request) (*Response, error) {
-	resp, err := c.client.Do(req.Request)
-	if err != nil {
-		return nil, fmt.Errorf("Send: %w", err)
+		return nil, fmt.Errorf("Do: %w", err)
 	}
 	return &Response{Response: resp}, nil
+}
+
+func (c *Client) Get(url string, params neturl.Values) (*Response, error) {
+	req, err := NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("Get: %w", err)
+	}
+	req.SetQueryParams(params)
+	return c.Do(req)
+}
+
+func (c *Client) Post(url string, contentType string, body []byte) (*Response, error) {
+	req, err := NewRequest(http.MethodPost, url, body)
+	if err != nil {
+		return nil, fmt.Errorf("Post: %w", err)
+	}
+	req.SetContentType(contentType)
+	return c.Do(req)
+}
+
+func (c *Client) PostForm(url string, data neturl.Values) (*Response, error) {
+	req, err := NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("PostForm: %w", err)
+	}
+	req.SetForm(data)
+	return c.Do(req)
+}
+
+func (c *Client) PostJson(url string, body any) (*Response, error) {
+	req, err := NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("PostJson: %w", err)
+	}
+	req.SetJson(body)
+	return c.Do(req)
 }

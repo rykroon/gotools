@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 type Response struct {
 	*http.Response
-	cachedBody []byte
 }
 
 // IsSuccess checks if the response is a success
@@ -44,25 +44,27 @@ func (r *Response) GetContentType() string {
 
 // GetBody returns the response body as a byte slice
 func (r *Response) GetBody() ([]byte, error) {
-	if r.cachedBody != nil {
-		return r.cachedBody, nil
-	}
-	content, err := r.readBody()
+	content, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, fmt.Errorf("GetBody: %w", err)
 	}
-	r.cachedBody = content
+	defer r.Body.Close()
 	return content, nil
 }
 
-// readBody reads the response body and returns it as a byte slice
-func (r *Response) readBody() ([]byte, error) {
-	content, err := io.ReadAll(r.Body)
-	if err != nil {
-		return nil, fmt.Errorf("readBody: %w", err)
+func (r *Response) IsForm() bool {
+	return r.GetContentType() == "application/x-www-form-urlencoded"
+}
+
+func (r *Response) GetForm() (url.Values, error) {
+	if !r.IsForm() {
+		return nil, fmt.Errorf("GetForm: response is not a form")
 	}
-	defer r.Body.Close()
-	return content, nil
+	content, err := r.GetBody()
+	if err != nil {
+		return nil, fmt.Errorf("GetForm: %w", err)
+	}
+	return url.ParseQuery(string(content))
 }
 
 // IsJson checks if the response is JSON
@@ -87,5 +89,4 @@ func (r *Response) UnmarshalJson(target any) error {
 		return fmt.Errorf("UnmarshalJson: %w", err)
 	}
 	return json.Unmarshal(content, target)
-
 }
