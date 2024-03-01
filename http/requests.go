@@ -1,4 +1,4 @@
-package http
+package httpx
 
 import (
 	"bytes"
@@ -17,17 +17,17 @@ func SetBearerToken(req *http.Request, token string) {
 }
 
 // SetRequestBody sets the request body to the given content and content type.
-func SetRequestBody(req *http.Request, contentType string, content []byte) {
+func SetBody(req *http.Request, contentType string, content []byte) {
 	req.Body = io.NopCloser(bytes.NewReader(content))
 	req.ContentLength = int64(len(content))
 	req.Header.Set("Content-Type", contentType)
 }
 
-func SetRequestJson(req *http.Request, value any) error {
+func SetJsonBody(req *http.Request, value any) error {
 	jsonBody, err := json.Marshal(value)
 	if err != nil {
-		return err
+		return fmt.Errorf("SetJsonBody: %w", err)
 	}
-	SetRequestBody(req, "application/json", jsonBody)
+	SetBody(req, "application/json", jsonBody)
 	return nil
 }
