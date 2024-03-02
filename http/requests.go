@@ -16,10 +16,20 @@ func SetBearerToken(req *http.Request, token string) {
 	SetAuth(req, "Bearer", token)
 }
 
-// SetRequestBody sets the request body to the given content and content type.
+// SetBody sets the request body to the given content and content type.
 func SetBody(req *http.Request, contentType string, content []byte) {
-	req.Body = io.NopCloser(bytes.NewReader(content))
-	req.ContentLength = int64(len(content))
+	// Set the body and content length.
+	reader := bytes.NewReader(content)
+	req.ContentLength = int64(reader.Len())
+	req.Body = io.NopCloser(reader)
+
+	// Set the GetBody function.
+	snapshot := *reader
+	req.GetBody = func() (io.ReadCloser, error) {
+		r := snapshot
+		return io.NopCloser(&r), nil
+	}
+	// Set the content type.
 	req.Header.Set("Content-Type", contentType)
 }
 
