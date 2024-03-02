@@ -8,7 +8,7 @@ import (
 )
 
 // ReadResponseBody reads the response body and returns it as a byte slice.
-func GetBody(res *http.Response) ([]byte, error) {
+func ReadBody(res *http.Response) ([]byte, error) {
 	defer res.Body.Close()
 	result, err := io.ReadAll(res.Body)
 	if err != nil {
@@ -17,16 +17,15 @@ func GetBody(res *http.Response) ([]byte, error) {
 	return result, nil
 }
 
-func GetJson(res *http.Response, target any) error {
-	body, err := GetBody(res)
+func ReadJson(res *http.Response, target any) error {
+	body, err := ReadBody(res)
 	if err != nil {
 		return fmt.Errorf("GetJson: %w", err)
 	}
 	if res.Header.Get("Content-Type") != "application/json" {
 		return fmt.Errorf("response content type is not application/json")
 	}
-	err = json.Unmarshal(body, target)
-	if err != nil {
+	if err = json.Unmarshal(body, target); err != nil {
 		return fmt.Errorf("GetJson: %w", err)
 	}
 	return nil
