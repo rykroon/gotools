@@ -18,12 +18,12 @@ func ReadBody(res *http.Response) ([]byte, error) {
 }
 
 func ReadJson(res *http.Response, target any) error {
+	if res.Header.Get("Content-Type") != "application/json" {
+		return fmt.Errorf("response content type is not application/json")
+	}
 	body, err := ReadBody(res)
 	if err != nil {
 		return fmt.Errorf("GetJson: %w", err)
-	}
-	if res.Header.Get("Content-Type") != "application/json" {
-		return fmt.Errorf("response content type is not application/json")
 	}
 	if err = json.Unmarshal(body, target); err != nil {
 		return fmt.Errorf("GetJson: %w", err)
