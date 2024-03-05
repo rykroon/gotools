@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 )
 
@@ -18,15 +19,19 @@ func ReadBody(res *http.Response) ([]byte, error) {
 }
 
 func ReadJson(res *http.Response, target any) error {
-	if res.Header.Get("Content-Type") != "application/json" {
-		return fmt.Errorf("response content type is not application/json")
+	mediaType, _, err := mime.ParseMediaType(res.Header.Get("Content-Type"))
+	if err != nil {
+		return fmt.Errorf("ReadJson: %w", err)
+	}
+	if mediaType != "application/json" {
+		return fmt.Errorf("ReadJson: content type is not application/json")
 	}
 	body, err := ReadBody(res)
 	if err != nil {
-		return fmt.Errorf("GetJson: %w", err)
+		return fmt.Errorf("ReadJson: %w", err)
 	}
 	if err = json.Unmarshal(body, target); err != nil {
-		return fmt.Errorf("GetJson: %w", err)
+		return fmt.Errorf("ReadJson: %w", err)
 	}
 	return nil
 }
